@@ -425,7 +425,7 @@ class _Atom3LevelQutipAdapter:
             raise BackendValidationError("placed pulse runs must be time ordered")
 
         frames = dict(input_frames)
-        pulses: list[Pulse] = []
+        pulses: list[tuple[Pulse, float, float]] = []
         pending_actions: list[tuple[float, int, tuple[PhaseShift | PhaseSwap, ...]]] = (
             []
         )
@@ -438,7 +438,11 @@ class _Atom3LevelQutipAdapter:
             if not enabled[source_index]:
                 continue
             pulses.extend(
-                self._bind_child(child, binding, start_time, frames)
+                (
+                    self._bind_child(child, binding, start_time, frames),
+                    start_time,
+                    start_time + block.duration,
+                )
                 for child, binding in zip(block.controls, block.control_bindings)
             )
             pending_actions.append(
@@ -453,13 +457,29 @@ class _Atom3LevelQutipAdapter:
             return _BoundFrames(output_frames=frames)
 
         hamiltonian = self.interaction_drift()
-        for pulse in pulses:
+        for pulse, start_time, end_time in pulses:
             contribution, collapse = pulse.get_noisy_qobjevo(self._dims)
             if collapse:
                 raise BackendValidationError(
                     "atom coherent pulse binding produced collapse terms"
                 )
-            hamiltonian += contribution
+            if (
+                start_time <= input_time + TIME_EPSILON
+                and end_time >= run.end_time - TIME_EPSILON
+            ):
+                hamiltonian += contribution
+                continue
+
+            def block_window(
+                time: float,
+                _args: dict[str, Any] | None = None,
+                *,
+                start: float = start_time,
+                end: float = end_time,
+            ) -> float:
+                return float(start <= time <= end)
+
+            hamiltonian += contribution * coefficient(block_window, args={})
         return _BoundDynamics(hamiltonian=hamiltonian, output_frames=frames)
 
     def _frame_unitary(self, frames: dict[Any, float]) -> Qobj:
