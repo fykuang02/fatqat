@@ -13,6 +13,7 @@ from . import noise
 from . import operations
 from . import simulator
 from . import visualization
+from .backend import Backend
 from .estimator import Estimator
 from .execution import ExecutableProgram
 from .job import Job
@@ -58,6 +59,7 @@ __all__ = [
     "errors",
     "multisite",
     "noise",
+    "Backend",
     "Estimator",
     "ExecutableProgram",
     "NoiseModel",
