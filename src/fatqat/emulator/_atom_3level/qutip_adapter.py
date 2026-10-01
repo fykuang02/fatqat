@@ -38,6 +38,7 @@ from .._core.value_validation import TIME_EPSILON
 from .._qutip_boundaries import (
     _apply_qutip_reset,
     _expand_qutip_local,
+    _qutip_time_window,
     _sample_projective_qutip_state,
     _solve_one_qutip_trajectory,
 )
@@ -470,16 +471,7 @@ class _Atom3LevelQutipAdapter:
                 hamiltonian += contribution
                 continue
 
-            def block_window(
-                time: float,
-                _args: dict[str, Any] | None = None,
-                *,
-                start: float = start_time,
-                end: float = end_time,
-            ) -> float:
-                return float(start <= time <= end)
-
-            hamiltonian += contribution * coefficient(block_window, args={})
+            hamiltonian += contribution * _qutip_time_window(start_time, end_time)
         return _BoundDynamics(hamiltonian=hamiltonian, output_frames=frames)
 
     def _frame_unitary(self, frames: dict[Any, float]) -> Qobj:

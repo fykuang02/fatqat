@@ -8,7 +8,6 @@ import numpy as np
 from qutip import (
     Qobj,
     basis,
-    coefficient,
     destroy,
     ket2dm,
     mesolve,
@@ -40,6 +39,7 @@ from .._core.value_validation import TIME_EPSILON
 from .._qutip_boundaries import (
     _apply_qutip_reset,
     _expand_qutip_local,
+    _qutip_time_window,
     _sample_projective_qutip_state,
     _solve_one_qutip_trajectory,
 )
@@ -334,16 +334,7 @@ class _TransmonQutipAdapter:
                 hamiltonian += contribution
                 continue
 
-            def block_window(
-                time: float,
-                _args: dict[str, Any] | None = None,
-                *,
-                start: float = start_time,
-                end: float = end_time,
-            ) -> float:
-                return float(start <= time <= end)
-
-            hamiltonian += contribution * coefficient(block_window, args={})
+            hamiltonian += contribution * _qutip_time_window(start_time, end_time)
         local_collapse: list[Any] = []
         for noise_pulse in noise_pulses:
             _zero, collapse = noise_pulse.get_noisy_qobjevo(self._dims)
